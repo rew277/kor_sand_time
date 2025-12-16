@@ -16,16 +16,17 @@
         }
         .container {
             background-color: white;
-            padding: 2rem;
-            border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            padding: 2.5rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.08);
             width: 90%;
-            max-width: 450px;
+            max-width: 480px;
             text-align: center;
         }
         h2 {
+            margin-top: 0;
             margin-bottom: 1.5rem;
-            color: #333;
+            color: #2c3e50;
         }
         .time-group {
             margin-bottom: 1.5rem;
@@ -34,48 +35,116 @@
         label {
             display: block;
             margin-bottom: 0.5rem;
-            font-weight: bold;
+            font-weight: 700;
             color: #555;
+            font-size: 0.95rem;
         }
+        
+        /* 입력창과 버튼을 감싸는 컨테이너 */
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
         input[type="datetime-local"] {
-            width: 100%;
+            flex: 1; /* 남은 공간 모두 차지 */
             padding: 12px;
             font-size: 16px;
             border: 1px solid #ddd;
-            border-radius: 8px;
+            border-radius: 10px;
             box-sizing: border-box;
             font-family: inherit;
+            background-color: #fff;
+            color: #333;
         }
         input[type="datetime-local"]:focus {
             border-color: #007bff;
             outline: none;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
         }
+
+        /* 복사 버튼 스타일 */
+        .copy-btn {
+            background-color: #f1f3f5;
+            border: none;
+            border-radius: 10px;
+            width: 46px;
+            height: 46px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative; /* 툴팁 위치용 */
+        }
+        .copy-btn:hover {
+            background-color: #e9ecef;
+            transform: translateY(-2px);
+        }
+        .copy-btn:active {
+            transform: translateY(0);
+        }
+        .copy-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: #555;
+        }
+        
         .divider {
-            margin: 1rem 0;
-            color: #888;
+            margin: 1.2rem 0;
+            color: #adb5bd;
             font-size: 1.2rem;
+            font-weight: bold;
         }
         .info {
             font-size: 0.85rem;
-            color: #666;
+            color: #6c757d;
             margin-top: 0.5rem;
             background: #f8f9fa;
-            padding: 8px;
-            border-radius: 6px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            display: inline-block;
         }
-        button {
+        .reset-btn {
             background-color: #007bff;
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 20px;
+            padding: 10px 24px;
+            border-radius: 50px;
+            font-weight: 600;
             font-size: 14px;
             cursor: pointer;
             transition: background 0.3s;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0,123,255,0.2);
         }
-        button:hover {
+        .reset-btn:hover {
             background-color: #0056b3;
+        }
+
+        /* 복사 완료 시 나타나는 말풍선 (Toast) */
+        .toast {
+            visibility: hidden;
+            min-width: 200px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 10px;
+            position: fixed;
+            z-index: 1;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s, bottom 0.3s;
+        }
+        .toast.show {
+            visibility: visible;
+            opacity: 1;
+            bottom: 50px;
         }
     </style>
 </head>
@@ -83,137 +152,156 @@
 
 <div class="container">
     <h2>🌏 시간 변환기</h2>
-    <button onclick="setNow()">현재 시간으로 초기화</button>
+    <button class="reset-btn" onclick="setNow()">🔄 현재 시간으로 설정</button>
 
     <div class="time-group">
         <label for="koreaTime">🇰🇷 한국 (KST)</label>
-        <input type="datetime-local" id="koreaTime" oninput="convertFromKorea()">
+        <div class="input-wrapper">
+            <input type="datetime-local" id="koreaTime" oninput="convertFromKorea()">
+            <button class="copy-btn" onclick="copyTime('koreaTime')" title="시간 복사">
+                <svg viewBox="0 0 24 24">
+                    <path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z"/>
+                </svg>
+            </button>
+        </div>
         <div class="info">UTC+9 (표준시)</div>
     </div>
 
-    <div class="divider">⇅ 자동 변환 ⇅</div>
+    <div class="divider">⇅</div>
 
     <div class="time-group">
         <label for="sdTime">🇺🇸 샌디에고 (PST/PDT)</label>
-        <input type="datetime-local" id="sdTime" oninput="convertFromSD()">
-        <div class="info" id="sdInfo">UTC-8 (혹은 썸머타임 -7)</div>
+        <div class="input-wrapper">
+            <input type="datetime-local" id="sdTime" oninput="convertFromSD()">
+            <button class="copy-btn" onclick="copyTime('sdTime')" title="시간 복사">
+                <svg viewBox="0 0 24 24">
+                    <path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z"/>
+                </svg>
+            </button>
+        </div>
+        <div class="info" id="sdInfo">계산 중...</div>
     </div>
 </div>
+
+<div id="toast" class="toast">클립보드에 복사되었습니다! ✅</div>
 
 <script>
     const koreaInput = document.getElementById('koreaTime');
     const sdInput = document.getElementById('sdTime');
     const sdInfo = document.getElementById('sdInfo');
 
-    // 1. 한국 시간을 기준으로 샌디에고 시간 계산
+    // 1. 한국 -> 샌디에고
     function convertFromKorea() {
         if (!koreaInput.value) return;
-
-        // 입력된 한국 시간을 Date 객체로 변환 (ISO 포맷에 KST 오프셋 +09:00 추가)
         const dateStr = koreaInput.value; 
         const kstDate = new Date(dateStr + ":00+09:00");
-
-        // 샌디에고 시간대로 포맷팅
         const sdString = formatToLocalISO(kstDate, 'America/Los_Angeles');
         sdInput.value = sdString;
-        
         updateSDLabel(kstDate);
     }
 
-    // 2. 샌디에고 시간을 기준으로 한국 시간 계산
+    // 2. 샌디에고 -> 한국
     function convertFromSD() {
         if (!sdInput.value) return;
-
-        const dateStr = sdInput.value; // 예: 2025-06-01T12:00
-        
-        // 샌디에고는 썸머타임 때문에 오프셋이 변하므로 단순 계산이 어렵습니다.
-        // 따라서, 입력된 시간을 해당 지역(LA) 시간으로 해석하여 Date 객체를 만듭니다.
+        const dateStr = sdInput.value; 
         const sdDate = createDateFromZone(dateStr, 'America/Los_Angeles');
-
-        // 한국 시간대로 포맷팅
         const kstString = formatToLocalISO(sdDate, 'Asia/Seoul');
         koreaInput.value = kstString;
-
         updateSDLabel(sdDate);
     }
 
-    // 특정 타임존의 문자열 입력을 실제 UTC 절대 시간(Date 객체)으로 변환하는 함수
-    function createDateFromZone(localDateStr, timeZone) {
-        // 1. 일단 입력값을 UTC로 가정하고 Date 객체 생성
-        const tempDate = new Date(localDateStr + "Z");
+    // 복사 기능 함수
+    function copyTime(elementId) {
+        const input = document.getElementById(elementId);
+        if (!input.value) return;
+
+        // 보기 좋게 T를 공백으로 변경 (예: 2025-12-25 15:00)
+        const textToCopy = input.value.replace("T", " ");
+
+        // 로컬 파일 보안 이슈 대응을 위한 강력한 복사 로직
+        if (navigator.clipboard && window.isSecureContext) {
+            // 최신 방식 (HTTPS나 localhost)
+            navigator.clipboard.writeText(textToCopy).then(showToast, fallbackCopy);
+        } else {
+            // 로컬 파일(file://)이나 구형 브라우저 대응
+            fallbackCopy(textToCopy);
+        }
+    }
+
+    function fallbackCopy(text) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
         
-        // 2. 해당 시간일 때 타임존의 실제 시간 문자열 추출
-        // (예: 입력은 12:00인데, 실제 그 타임존은 05:00일 수 있음)
+        // 화면 밖으로 숨김
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            document.execCommand('copy');
+            showToast();
+        } catch (err) {
+            alert("복사에 실패했습니다.");
+        }
+        
+        document.body.removeChild(textArea);
+    }
+
+    // 토스트 메시지 표시
+    function showToast() {
+        const toast = document.getElementById("toast");
+        toast.className = "toast show";
+        setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
+    }
+
+    // --- (이전과 동일한 계산 로직 함수들) ---
+
+    function createDateFromZone(localDateStr, timeZone) {
+        const tempDate = new Date(localDateStr + "Z");
         const options = { 
             timeZone: timeZone, 
             year: 'numeric', month: '2-digit', day: '2-digit', 
             hour: '2-digit', minute: '2-digit', second: '2-digit', 
             hour12: false 
         };
-        
-        // 포맷터 생성
         const fmt = new Intl.DateTimeFormat('en-US', options);
-        
-        // 이분탐색 혹은 오프셋 계산을 통해 정확한 UTC 시간을 찾습니다.
-        // 더 간단한 방법: 오프셋 역계산 방식
-        
-        // 입력받은 시간을 타겟 시간으로 간주
-        const targetParts = tempDate.toISOString().slice(0, 19).replace('T', ' '); // 단순 숫자 비교용
-        
-        // 오차 보정 루프 (약 2~3회 반복이면 정확해짐)
         let bestGuess = new Date(tempDate.getTime());
-        
         for(let i=0; i<3; i++) {
             const parts = fmt.formatToParts(bestGuess);
             const partObj = {};
             parts.forEach(p => partObj[p.type] = p.value);
-            
-            // 타임존이 적용된 현재 추측 시간의 문자열 재조립
             const guessLocalStr = `${partObj.year}-${partObj.month}-${partObj.day}T${partObj.hour}:${partObj.minute}`;
             const guessLocalTime = new Date(guessLocalStr + "Z").getTime();
             const inputLocalTime = new Date(localDateStr + "Z").getTime();
-            
             const diff = inputLocalTime - guessLocalTime;
-            
             if (diff === 0) break;
             bestGuess = new Date(bestGuess.getTime() + diff);
         }
-        
         return bestGuess;
     }
 
-    // Date 객체를 'YYYY-MM-DDTHH:mm' 형식의 문자열(input value용)로 변환
     function formatToLocalISO(date, timeZone) {
-        // 스웨덴 로케일(sv-SE)이 ISO 포맷(YYYY-MM-DD hh:mm:ss)과 가장 유사함을 이용한 트릭
         const options = {
-            timeZone: timeZone,
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
+            timeZone: timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', hour12: false
         };
-        
         const formatter = new Intl.DateTimeFormat('sv-SE', options);
         const parts = formatter.formatToParts(date);
-        
-        // 부품 조립 (브라우저 호환성을 위해 수동 조립)
         const getPart = (type) => parts.find(p => p.type === type).value;
         return `${getPart('year')}-${getPart('month')}-${getPart('day')}T${getPart('hour')}:${getPart('minute')}`;
     }
 
-    // 샌디에고가 현재 썸머타임(PDT)인지 표준시(PST)인지 표시
     function updateSDLabel(dateObj) {
-        // 해당 날짜의 LA 시간 문자열 확인 (시간대 약어 포함)
         const str = dateObj.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', timeZoneName: 'short' });
         const isPDT = str.includes('PDT');
-        
         if (isPDT) {
-            sdInfo.innerText = "현재 썸머타임 적용 중 (PDT, UTC-7) ☀️";
+            sdInfo.innerText = "썸머타임 적용 (PDT, UTC-7) ☀️";
             sdInfo.style.color = "#d63384";
         } else {
-            sdInfo.innerText = "현재 표준시 적용 중 (PST, UTC-8) ❄️";
+            sdInfo.innerText = "표준시 적용 (PST, UTC-8) ❄️";
             sdInfo.style.color = "#666";
         }
     }
@@ -221,12 +309,10 @@
     function setNow() {
         const now = new Date();
         koreaInput.value = formatToLocalISO(now, 'Asia/Seoul');
-        convertFromKorea(); // 한국 시간 기준으로 샌디에고 시간 업데이트
+        convertFromKorea();
     }
 
-    // 페이지 로드 시 현재 시간 설정
     setNow();
-
 </script>
 
 </body>
