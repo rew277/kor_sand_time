@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>한국 - 샌디에고 시간 변환기</title>
+    <style>
+        body {
+            font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+        }
+        h2 {
+            margin-bottom: 1.5rem;
+            color: #333;
+        }
+        .time-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="datetime-local"] {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        input[type="datetime-local"]:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+        .divider {
+            margin: 1rem 0;
+            color: #888;
+            font-size: 1.2rem;
+        }
+        .info {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 0.5rem;
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 6px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-bottom: 20px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🌏 시간 변환기</h2>
+    <button onclick="setNow()">현재 시간으로 초기화</button>
+
+    <div class="time-group">
+        <label for="koreaTime">🇰🇷 한국 (KST)</label>
+        <input type="datetime-local" id="koreaTime" oninput="convertFromKorea()">
+        <div class="info">UTC+9 (표준시)</div>
+    </div>
+
+    <div class="divider">⇅ 자동 변환 ⇅</div>
+
+    <div class="time-group">
+        <label for="sdTime">🇺🇸 샌디에고 (PST/PDT)</label>
+        <input type="datetime-local" id="sdTime" oninput="convertFromSD()">
+        <div class="info" id="sdInfo">UTC-8 (혹은 썸머타임 -7)</div>
+    </div>
+</div>
+
+<script>
+    const koreaInput = document.getElementById('koreaTime');
+    const sdInput = document.getElementById('sdTime');
+    const sdInfo = document.getElementById('sdInfo');
+
+    // 1. 한국 시간을 기준으로 샌디에고 시간 계산
+    function convertFromKorea() {
+        if (!koreaInput.value) return;
+
+        // 입력된 한국 시간을 Date 객체로 변환 (ISO 포맷에 KST 오프셋 +09:00 추가)
+        const dateStr = koreaInput.value; 
+        const kstDate = new Date(dateStr + ":00+09:00");
+
+        // 샌디에고 시간대로 포맷팅
+        const sdString = formatToLocalISO(kstDate, 'America/Los_Angeles');
+        sdInput.value = sdString;
+        
+        updateSDLabel(kstDate);
+    }
+
+    // 2. 샌디에고 시간을 기준으로 한국 시간 계산
+    function convertFromSD() {
+        if (!sdInput.value) return;
+
+        const dateStr = sdInput.value; // 예: 2025-06-01T12:00
+        
+        // 샌디에고는 썸머타임 때문에 오프셋이 변하므로 단순 계산이 어렵습니다.
+        // 따라서, 입력된 시간을 해당 지역(LA) 시간으로 해석하여 Date 객체를 만듭니다.
+        const sdDate = createDateFromZone(dateStr, 'America/Los_Angeles');
+
+        // 한국 시간대로 포맷팅
+        const kstString = formatToLocalISO(sdDate, 'Asia/Seoul');
+        koreaInput.value = kstString;
+
+        updateSDLabel(sdDate);
+    }
+
+    // 특정 타임존의 문자열 입력을 실제 UTC 절대 시간(Date 객체)으로 변환하는 함수
+    function createDateFromZone(localDateStr, timeZone) {
+        // 1. 일단 입력값을 UTC로 가정하고 Date 객체 생성
+        const tempDate = new Date(localDateStr + "Z");
+        
+        // 2. 해당 시간일 때 타임존의 실제 시간 문자열 추출
+        // (예: 입력은 12:00인데, 실제 그 타임존은 05:00일 수 있음)
+        const options = { 
+            timeZone: timeZone, 
+            year: 'numeric', month: '2-digit', day: '2-digit', 
+            hour: '2-digit', minute: '2-digit', second: '2-digit', 
+            hour12: false 
+        };
+        
+        // 포맷터 생성
+        const fmt = new Intl.DateTimeFormat('en-US', options);
+        
+        // 이분탐색 혹은 오프셋 계산을 통해 정확한 UTC 시간을 찾습니다.
+        // 더 간단한 방법: 오프셋 역계산 방식
+        
+        // 입력받은 시간을 타겟 시간으로 간주
+        const targetParts = tempDate.toISOString().slice(0, 19).replace('T', ' '); // 단순 숫자 비교용
+        
+        // 오차 보정 루프 (약 2~3회 반복이면 정확해짐)
+        let bestGuess = new Date(tempDate.getTime());
+        
+        for(let i=0; i<3; i++) {
+            const parts = fmt.formatToParts(bestGuess);
+            const partObj = {};
+            parts.forEach(p => partObj[p.type] = p.value);
+            
+            // 타임존이 적용된 현재 추측 시간의 문자열 재조립
+            const guessLocalStr = `${partObj.year}-${partObj.month}-${partObj.day}T${partObj.hour}:${partObj.minute}`;
+            const guessLocalTime = new Date(guessLocalStr + "Z").getTime();
+            const inputLocalTime = new Date(localDateStr + "Z").getTime();
+            
+            const diff = inputLocalTime - guessLocalTime;
+            
+            if (diff === 0) break;
+            bestGuess = new Date(bestGuess.getTime() + diff);
+        }
+        
+        return bestGuess;
+    }
+
+    // Date 객체를 'YYYY-MM-DDTHH:mm' 형식의 문자열(input value용)로 변환
+    function formatToLocalISO(date, timeZone) {
+        // 스웨덴 로케일(sv-SE)이 ISO 포맷(YYYY-MM-DD hh:mm:ss)과 가장 유사함을 이용한 트릭
+        const options = {
+            timeZone: timeZone,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        };
+        
+        const formatter = new Intl.DateTimeFormat('sv-SE', options);
+        const parts = formatter.formatToParts(date);
+        
+        // 부품 조립 (브라우저 호환성을 위해 수동 조립)
+        const getPart = (type) => parts.find(p => p.type === type).value;
+        return `${getPart('year')}-${getPart('month')}-${getPart('day')}T${getPart('hour')}:${getPart('minute')}`;
+    }
+
+    // 샌디에고가 현재 썸머타임(PDT)인지 표준시(PST)인지 표시
+    function updateSDLabel(dateObj) {
+        // 해당 날짜의 LA 시간 문자열 확인 (시간대 약어 포함)
+        const str = dateObj.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', timeZoneName: 'short' });
+        const isPDT = str.includes('PDT');
+        
+        if (isPDT) {
+            sdInfo.innerText = "현재 썸머타임 적용 중 (PDT, UTC-7) ☀️";
+            sdInfo.style.color = "#d63384";
+        } else {
+            sdInfo.innerText = "현재 표준시 적용 중 (PST, UTC-8) ❄️";
+            sdInfo.style.color = "#666";
+        }
+    }
+
+    function setNow() {
+        const now = new Date();
+        koreaInput.value = formatToLocalISO(now, 'Asia/Seoul');
+        convertFromKorea(); // 한국 시간 기준으로 샌디에고 시간 업데이트
+    }
+
+    // 페이지 로드 시 현재 시간 설정
+    setNow();
+
+</script>
+
+</body>
+</html>
